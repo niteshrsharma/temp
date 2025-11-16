@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Question Viewer</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    pre { background: #f0f0f0; padding: 10px; border-radius: 6px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+<h2>Question Output</h2>
+<div id="output">Loading...</div>
+<script>
+let data = {
+    "aos": [
+  {
+    "id": 1,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Take multiple files as Command Line Arguments and print their inode numbers and file types.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <sys/types.h>\n#include <time.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc < 2) {\n        fprintf(stderr, \"Usage: %s file1 [file2 ...]\\n\", argv[0]);\n        return 1;\n    }\n    struct stat st;\n    for (int i = 1; i < argc; ++i) {\n        if (stat(argv[i], &st) == -1) {\n            perror(argv[i]);\n            continue;\n        }\n        printf(\"%s: inode=%lu, type=\", argv[i], (unsigned long)st.st_ino);\n        if (S_ISREG(st.st_mode)) printf(\"regular file\\n\");\n        else if (S_ISDIR(st.st_mode)) printf(\"directory\\n\");\n        else if (S_ISCHR(st.st_mode)) printf(\"character device\\n\");\n        else if (S_ISBLK(st.st_mode)) printf(\"block device\\n\");\n        else if (S_ISFIFO(st.st_mode)) printf(\"FIFO/pipe\\n\");\n        else if (S_ISLNK(st.st_mode)) printf(\"symlink\\n\");\n        else if (S_ISSOCK(st.st_mode)) printf(\"socket\\n\");\n        else printf(\"unknown\\n\");\n    }\n    return 0;\n}"
+      },
+      {
+        "qno": 2,
+        "question": "Write a C program to send SIGALRM signal by child process to parent process and parent process make a provision to catch the signal and display alarm is fired. (Use kill, fork, signal and sleep system call)",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/types.h>\n\nvolatile sig_atomic_t alarm_received = 0;\n\nvoid handler(int sig) {\n    if (sig == SIGALRM) {\n        alarm_received = 1;\n        printf(\"Parent: alarm is fired (caught SIGALRM)\\n\");\n    }\n}\n\nint main(void) {\n    pid_t pid = fork();\n    if (pid < 0) {\n        perror(\"fork\");\n        return 1;\n    }\n    if (pid == 0) {\n        /* child */\n        sleep(2); // wait a bit\n        pid_t ppid = getppid();\n        kill(ppid, SIGALRM);\n        printf(\"Child: sent SIGALRM to parent (pid=%d)\\n\", ppid);\n        return 0;\n    } else {\n        /* parent */\n        struct sigaction sa;\n        sa.sa_handler = handler;\n        sigemptyset(&sa.sa_mask);\n        sa.sa_flags = 0;\n        sigaction(SIGALRM, &sa, NULL);\n        printf(\"Parent: waiting for SIGALRM...\\n\");\n        while (!alarm_received) {\n            pause();\n        }\n        return 0;\n    }\n}"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a C program to find file properties such as inode number, number of hard links, file permissions, file size, access and modification time using stat() system call.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <time.h>\n#include <stdlib.h>\n\nvoid print_perms(mode_t m) {\n    char perms[11] = \"----------\";\n    if (S_ISDIR(m)) perms[0] = 'd';\n    if (m & S_IRUSR) perms[1] = 'r';\n    if (m & S_IWUSR) perms[2] = 'w';\n    if (m & S_IXUSR) perms[3] = 'x';\n    if (m & S_IRGRP) perms[4] = 'r';\n    if (m & S_IWGRP) perms[5] = 'w';\n    if (m & S_IXGRP) perms[6] = 'x';\n    if (m & S_IROTH) perms[7] = 'r';\n    if (m & S_IWOTH) perms[8] = 'w';\n    if (m & S_IXOTH) perms[9] = 'x';\n    printf(\"%s\", perms);\n}\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) {\n        fprintf(stderr, \"Usage: %s filename\\n\", argv[0]);\n        return 1;\n    }\n    struct stat st;\n    if (stat(argv[1], &st) == -1) {\n        perror(\"stat\");\n        return 1;\n    }\n    printf(\"File: %s\\n\", argv[1]);\n    printf(\"inode: %lu\\n\", (unsigned long)st.st_ino);\n    printf(\"hard links: %lu\\n\", (unsigned long)st.st_nlink);\n    printf(\"permissions: \"); print_perms(st.st_mode); printf(\"\\n\");\n    printf(\"size: %lld bytes\\n\", (long long)st.st_size);\n    printf(\"last access: %s\", ctime(&st.st_atime));\n    printf(\"last modification: %s\", ctime(&st.st_mtime));\n    return 0;\n}"
+      },
+      {
+        "qno": 2,
+        "question": "Write a C program that catches the ctrl-c (SIGINT) signal for the first time and displays a message, and exits on pressing ctrl-c again.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <signal.h>\n#include <unistd.h>\n\nvolatile sig_atomic_t count = 0;\n\nvoid sigint_handler(int sig) {\n    (void)sig;\n    count++;\n    if (count == 1) {\n        printf(\"Caught SIGINT once. Press Ctrl-C again to exit.\\n\");\n    } else {\n        printf(\"Caught SIGINT again. Exiting.\\n\");\n        _exit(0);\n    }\n}\n\nint main(void) {\n    struct sigaction sa;\n    sa.sa_handler = sigint_handler;\n    sigemptyset(&sa.sa_mask);\n    sa.sa_flags = 0;\n    sigaction(SIGINT, &sa, NULL);\n    while (1) pause();\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Print the type of file and inode number where file name is accepted through command line.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) {\n        fprintf(stderr, \"Usage: %s filename\\n\", argv[0]);\n        return 1;\n    }\n    struct stat st;\n    if (stat(argv[1], &st) == -1) { perror(\"stat\"); return 1; }\n    printf(\"%s: inode=%lu, type=\", argv[1], (unsigned long)st.st_ino);\n    if (S_ISREG(st.st_mode)) printf(\"regular file\\n\");\n    else if (S_ISDIR(st.st_mode)) printf(\"directory\\n\");\n    else if (S_ISLNK(st.st_mode)) printf(\"symlink\\n\");\n    else if (S_ISCHR(st.st_mode)) printf(\"char device\\n\");\n    else if (S_ISBLK(st.st_mode)) printf(\"block device\\n\");\n    else if (S_ISFIFO(st.st_mode)) printf(\"fifo/pipe\\n\");\n    else if (S_ISSOCK(st.st_mode)) printf(\"socket\\n\");\n    else printf(\"unknown\\n\");\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Write a C program that creates a child process to run a Linux/Unix command. Parent sets handler for death of child and alarm. If child does not finish in 5 seconds, parent kills it.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\npid_t child = -1;\n\nvoid alarm_handler(int sig) {\n    (void)sig;\n    if (child > 0) {\n        kill(child, SIGKILL);\n        printf(\"Parent: child timed out; killed (pid=%d)\\n\", child);\n    }\n}\n\nvoid chld_handler(int sig) {\n    (void)sig;\n    int status;\n    pid_t pid = waitpid(child, &status, WNOHANG);\n    if (pid == child) {\n        if (WIFEXITED(status)) printf(\"Parent: child exited with %d\\n\", WEXITSTATUS(status));\n        else if (WIFSIGNALED(status)) printf(\"Parent: child killed by signal %d\\n\", WTERMSIG(status));\n        child = -1;\n    }\n}\n\nint main(int argc, char *argv[]) {\n    if (argc < 2) { fprintf(stderr, \"Usage: %s command [args...]\\n\", argv[0]); return 1; }\n    child = fork();\n    if (child < 0) { perror(\"fork\"); return 1; }\n    if (child == 0) {\n        execvp(argv[1], &argv[1]);\n        perror(\"execvp\");\n        _exit(127);\n    } else {\n        struct sigaction sa;\n        sa.sa_handler = chld_handler; sigemptyset(&sa.sa_mask); sa.sa_flags = SA_NOCLDSTOP;\n        sigaction(SIGCHLD, &sa, NULL);\n        signal(SIGALRM, alarm_handler);\n        alarm(5);\n        /* wait for child or alarm */\n        while (child > 0) pause();\n        return 0;\n    }\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a C program to find whether given files passed through command line arguments are present in the current directory or not.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <sys/stat.h>\n\nint main(int argc, char *argv[]) {\n    if (argc < 2) { fprintf(stderr, \"Usage: %s file1 [file2 ...]\\n\", argv[0]); return 1; }\n    struct stat st;\n    for (int i = 1; i < argc; ++i) {\n        if (stat(argv[i], &st) == 0) printf(\"%s: present\\n\", argv[i]);\n        else printf(\"%s: NOT present\\n\", argv[i]);\n    }\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Write a C program where child catches SIGHUP, SIGINT, SIGQUIT. Parent sends SIGHUP/SIGINT every 3 seconds and SIGQUIT at 15 seconds; child displays “My Papa has Killed me!!!”.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\nvoid child_handler(int sig) {\n    if (sig == SIGHUP) printf(\"Child: caught SIGHUP\\n\");\n    else if (sig == SIGINT) printf(\"Child: caught SIGINT\\n\");\n    else if (sig == SIGQUIT) {\n        printf(\"My Papa has Killed me!!!\\n\");\n        _exit(0);\n    }\n}\n\nint main(void) {\n    pid_t pid = fork();\n    if (pid < 0) { perror(\"fork\"); return 1; }\n    if (pid == 0) {\n        signal(SIGHUP, child_handler);\n        signal(SIGINT, child_handler);\n        signal(SIGQUIT, child_handler);\n        while (1) pause();\n    } else {\n        for (int t = 3; t <= 15; t += 3) {\n            sleep(3);\n            if (t < 15) {\n                kill(pid, (t % 6 == 0) ? SIGINT : SIGHUP); // alternate SIGHUP/SIGINT\n                printf(\"Parent: sent signal at %d seconds\\n\", t);\n            } else {\n                kill(pid, SIGQUIT);\n                printf(\"Parent: sent SIGQUIT at %d seconds\\n\", t);\n            }\n        }\n        wait(NULL);\n    }\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Read the current directory and display the name of files and number of files.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <stdlib.h>\n\nint main(void) {\n    DIR *d = opendir(\".\");\n    if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *ent;\n    int count = 0;\n    while ((ent = readdir(d)) != NULL) {\n        printf(\"%s\\n\", ent->d_name);\n        ++count;\n    }\n    closedir(d);\n    printf(\"Total entries: %d\\n\", count);\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Create an unnamed pipe. Child writes three messages to pipe; parent displays them.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <string.h>\n#include <sys/wait.h>\n#include <stdlib.h>\n\nint main(void) {\n    int fd[2];\n    if (pipe(fd) == -1) { perror(\"pipe\"); return 1; }\n    pid_t pid = fork();\n    if (pid < 0) { perror(\"fork\"); return 1; }\n    if (pid == 0) {\n        close(fd[0]);\n        const char *msgs[] = {\"Hello World\",\"Hello SPPU\",\"Linux is Funny\"};\n        for (int i = 0; i < 3; ++i) {\n            write(fd[1], msgs[i], strlen(msgs[i])+1);\n            sleep(1);\n        }\n        close(fd[1]);\n        return 0;\n    } else {\n        close(fd[1]);\n        char buf[128];\n        for (int i = 0; i < 3; ++i) {\n            ssize_t n = read(fd[0], buf, sizeof(buf));\n            if (n > 0) printf(\"Parent received: %s\\n\", buf);\n        }\n        close(fd[0]);\n        wait(NULL);\n    }\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Display all files from current directory created in a particular month.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <sys/stat.h>\n#include <time.h>\n#include <string.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) { fprintf(stderr, \"Usage: %s month_number(1-12)\\n\", argv[0]); return 1; }\n    int month = atoi(argv[1]);\n    if (month < 1 || month > 12) { fprintf(stderr, \"Invalid month\\n\"); return 1; }\n    DIR *d = opendir(\".\"); if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *ent;\n    while ((ent = readdir(d)) != NULL) {\n        struct stat st;\n        if (stat(ent->d_name, &st) == -1) continue;\n        struct tm *tm = localtime(&st.st_mtime);\n        if (tm && (tm->tm_mon + 1) == month) printf(\"%s\\n\", ent->d_name);\n    }\n    closedir(d);\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Create n child processes; when all terminate, display total cumulative time spent in user and kernel mode.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <sys/time.h>\n#include <sys/resource.h>\n#include <sys/wait.h>\n#include <unistd.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) { fprintf(stderr, \"Usage: %s n\\n\", argv[0]); return 1; }\n    int n = atoi(argv[1]);\n    if (n <= 0) return 1;\n    for (int i = 0; i < n; ++i) {\n        pid_t p = fork();\n        if (p < 0) { perror(\"fork\"); return 1; }\n        if (p == 0) {\n            /* child: do some work */\n            for (volatile long j = 0; j < 10000000L; ++j); // busy work\n            _exit(0);\n        }\n    }\n    long total_utime_usec = 0, total_stime_usec = 0;\n    for (int i = 0; i < n; ++i) {\n        int status;\n        wait(&status);\n        struct rusage ru;\n        getrusage(RUSAGE_CHILDREN, &ru);\n        /* getrusage(RUSAGE_CHILDREN) returns cumulative for all children; but calling repeatedly keeps same totals; so compute after all waits instead */\n    }\n    /* get final totals once */\n    struct rusage final;\n    getrusage(RUSAGE_CHILDREN, &final);\n    total_utime_usec = final.ru_utime.tv_sec * 1000000L + final.ru_utime.tv_usec;\n    total_stime_usec = final.ru_stime.tv_sec * 1000000L + final.ru_stime.tv_usec;\n    printf(\"Total user time (children): %ld.%06ld sec\\n\", (long)(final.ru_utime.tv_sec), (long)final.ru_utime.tv_usec);\n    printf(\"Total sys time  (children): %ld.%06ld sec\\n\", (long)(final.ru_stime.tv_sec), (long)final.ru_stime.tv_usec);\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a C program demonstrating redirection of standard output to a file.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <stdlib.h>\n\nint main(void) {\n    int fd = open(\"redirect_out.txt\", O_WRONLY | O_CREAT | O_TRUNC, 0644);\n    if (fd < 0) { perror(\"open\"); return 1; }\n    if (dup2(fd, STDOUT_FILENO) == -1) { perror(\"dup2\"); return 1; }\n    close(fd);\n    printf(\"This goes to redirect_out.txt\\n\");\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Implement: ls -l | wc -l using fork, pipe, exec.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <sys/wait.h>\n\nint main(void) {\n    int fd[2];\n    if (pipe(fd) == -1) { perror(\"pipe\"); return 1; }\n    pid_t p1 = fork();\n    if (p1 == 0) {\n        /* ls -l -> write end */\n        dup2(fd[1], STDOUT_FILENO);\n        close(fd[0]); close(fd[1]);\n        execlp(\"ls\", \"ls\", \"-l\", (char *)NULL);\n        perror(\"execlp ls\"); _exit(1);\n    }\n    pid_t p2 = fork();\n    if (p2 == 0) {\n        /* wc -l -> read end */\n        dup2(fd[0], STDIN_FILENO);\n        close(fd[0]); close(fd[1]);\n        execlp(\"wc\", \"wc\", \"-l\", (char *)NULL);\n        perror(\"execlp wc\"); _exit(1);\n    }\n    close(fd[0]); close(fd[1]);\n    waitpid(p1, NULL, 0);\n    waitpid(p2, NULL, 0);\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Redirect standard output to output.txt using dup and open system calls.",
+        "answer": "#include <stdio.h>\n#include <fcntl.h>\n#include <unistd.h>\n#include <stdlib.h>\n\nint main(void) {\n    int fd = open(\"output.txt\", O_WRONLY | O_CREAT | O_TRUNC, 0644);\n    if (fd < 0) { perror(\"open\"); return 1; }\n    if (dup2(fd, STDOUT_FILENO) == -1) { perror(\"dup2\"); return 1; }\n    close(fd);\n    printf(\"This will be written to output.txt\\n\");\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Implement: ls -l | wc -l using fork, pipe, exec.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <sys/wait.h>\n\nint main(void) {\n    int p[2]; if (pipe(p) == -1) { perror(\"pipe\"); return 1; }\n    if (fork() == 0) {\n        dup2(p[1], STDOUT_FILENO); close(p[0]); close(p[1]); execlp(\"ls\",\"ls\",\"-l\",NULL); perror(\"execlp ls\"); _exit(1);\n    }\n    if (fork() == 0) {\n        dup2(p[0], STDIN_FILENO); close(p[0]); close(p[1]); execlp(\"wc\",\"wc\",\"-l\",NULL); perror(\"execlp wc\"); _exit(1);\n    }\n    close(p[0]); close(p[1]); wait(NULL); wait(NULL);\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Generate parent process to write to an unnamed pipe and read from it.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <string.h>\n#include <sys/wait.h>\n#include <stdlib.h>\n\nint main(void) {\n    int fd[2]; if (pipe(fd) == -1) { perror(\"pipe\"); return 1; }\n    pid_t pid = fork();\n    if (pid < 0) { perror(\"fork\"); return 1; }\n    if (pid == 0) {\n        close(fd[1]);\n        char buf[128]; ssize_t n = read(fd[0], buf, sizeof(buf));\n        if (n > 0) printf(\"Child read: %s\\n\", buf);\n        close(fd[0]);\n        return 0;\n    } else {\n        close(fd[0]); const char *msg = \"Message from parent\";\n        write(fd[1], msg, strlen(msg)+1);\n        close(fd[1]); wait(NULL);\n    }\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Identify file type (Directory, Char device, Block device, Regular, FIFO, Symlink, Socket) using stat().",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) { fprintf(stderr, \"Usage: %s path\\n\", argv[0]); return 1; }\n    struct stat st;\n    if (lstat(argv[1], &st) == -1) { perror(\"lstat\"); return 1; }\n    if (S_ISREG(st.st_mode)) printf(\"regular file\\n\");\n    else if (S_ISDIR(st.st_mode)) printf(\"directory\\n\");\n    else if (S_ISCHR(st.st_mode)) printf(\"character device\\n\");\n    else if (S_ISBLK(st.st_mode)) printf(\"block device\\n\");\n    else if (S_ISFIFO(st.st_mode)) printf(\"fifo/pipe\\n\");\n    else if (S_ISLNK(st.st_mode)) printf(\"symlink\\n\");\n    else if (S_ISSOCK(st.st_mode)) printf(\"socket\\n\");\n    else printf(\"unknown\\n\");\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a program that illustrates executing two commands concurrently using a pipe.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <sys/wait.h>\n\nint main(void) {\n    int p[2]; if (pipe(p) == -1) { perror(\"pipe\"); return 1; }\n    if (fork() == 0) { /* producer: echo \"one\\ntwo\" */\n        dup2(p[1], STDOUT_FILENO); close(p[0]); close(p[1]); execlp(\"echo\",\"echo\",\"-e\",\"one\\ntwo\",NULL); perror(\"execlp echo\"); _exit(1);\n    }\n    if (fork() == 0) { /* consumer: wc -l */\n        dup2(p[0], STDIN_FILENO); close(p[0]); close(p[1]); execlp(\"wc\",\"wc\",\"-l\",NULL); perror(\"execlp wc\"); _exit(1);\n    }\n    close(p[0]); close(p[1]); wait(NULL); wait(NULL);\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Parent writes to pipe; child reads from it.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <string.h>\n#include <sys/wait.h>\n\nint main(void) {\n    int fd[2]; if (pipe(fd) == -1) { perror(\"pipe\"); return 1; }\n    pid_t pid = fork();\n    if (pid < 0) { perror(\"fork\"); return 1; }\n    if (pid == 0) {\n        close(fd[1]); char buf[256]; ssize_t n = read(fd[0], buf, sizeof(buf)); if (n>0) printf(\"Child read: %s\\n\", buf); close(fd[0]); return 0;\n    } else {\n        close(fd[0]); const char *msg = \"Data from parent\"; write(fd[1], msg, strlen(msg)+1); close(fd[1]); wait(NULL);\n    }\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Get and set resource limits such as files, memory for a process.",
+        "answer": "#include <stdio.h>\n#include <sys/resource.h>\n#include <stdlib.h>\n\nint main(void) {\n    struct rlimit rl;\n    if (getrlimit(RLIMIT_NOFILE, &rl) == -1) { perror(\"getrlimit\"); return 1; }\n    printf(\"NOFILE soft=%llu hard=%llu\\n\", (unsigned long long)rl.rlim_cur, (unsigned long long)rl.rlim_max);\n    rl.rlim_cur = (rl.rlim_cur < 1024) ? 1024 : rl.rlim_cur;\n    if (setrlimit(RLIMIT_NOFILE, &rl) == -1) perror(\"setrlimit\");\n    if (getrlimit(RLIMIT_AS, &rl) == -1) perror(\"getrlimit AS\");\n    else printf(\"AS soft=%llu hard=%llu\\n\", (unsigned long long)rl.rlim_cur, (unsigned long long)rl.rlim_max);\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Redirect standard output to output.txt using dup and open system calls.",
+        "answer": "#include <stdio.h>\n#include <fcntl.h>\n#include <unistd.h>\n\nint main(void) {\n    int fd = open(\"output.txt\", O_WRONLY | O_CREAT | O_TRUNC, 0644);\n    if (fd < 0) { perror(\"open\"); return 1; }\n    if (dup2(fd, STDOUT_FILENO) == -1) { perror(\"dup2\"); return 1; }\n    close(fd);\n    printf(\"Redirected using dup2 and open\\n\");\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Print the exit status of a terminated child process.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <sys/wait.h>\n#include <unistd.h>\n\nint main(void) {\n    pid_t pid = fork();\n    if (pid == 0) { _exit(5); }\n    else {\n        int status; wait(&status);\n        if (WIFEXITED(status)) printf(\"Child exited with status %d\\n\", WEXITSTATUS(status));\n        else if (WIFSIGNALED(status)) printf(\"Child killed by signal %d\\n\", WTERMSIG(status));\n    }\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Receive file names as command line arguments and display filenames in ascending order of file size.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <sys/stat.h>\n#include <string.h>\n\nint cmp(const void *a, const void *b) {\n    const char *fa = *(const char **)a;\n    const char *fb = *(const char **)b;\n    struct stat sa, sb; if (stat(fa, &sa) == -1) return 1; if (stat(fb, &sb) == -1) return -1;\n    if (sa.st_size < sb.st_size) return -1; if (sa.st_size > sb.st_size) return 1; return strcmp(fa, fb);\n}\n\nint main(int argc, char *argv[]) {\n    if (argc < 2) { fprintf(stderr, \"Usage: %s files...\\n\", argv[0]); return 1; }\n    char **files = &argv[1]; int n = argc - 1;\n    qsort(files, n, sizeof(char*), cmp);\n    for (int i = 0; i < n; ++i) printf(\"%s\\n\", files[i]);\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Illustrate suspending and resuming processes using signals.",
+        "answer": "#include <stdio.h>\n#include <signal.h>\n#include <unistd.h>\n\nint main(void) {\n    printf(\"PID: %d\\n\", getpid());\n    printf(\"Send SIGSTOP to suspend and SIGCONT to resume.\\n\");\n    while (1) { pause(); }\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Return all files beginning with a given prefix passed as an argument.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <string.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) { fprintf(stderr, \"Usage: %s prefix\\n\", argv[0]); return 1; }\n    const char *pref = argv[1]; size_t L = strlen(pref);\n    DIR *d = opendir(\".\"); if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *ent;\n    while ((ent = readdir(d)) != NULL) {\n        if (strncmp(ent->d_name, pref, L) == 0) printf(\"%s\\n\", ent->d_name);\n    }\n    closedir(d); return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Display all files from current directory whose size is greater than n bytes.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <sys/stat.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc != 2) { fprintf(stderr, \"Usage: %s n_bytes\\n\", argv[0]); return 1; }\n    long n = atol(argv[1]); DIR *d = opendir(\".\"); if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *e; while ((e = readdir(d)) != NULL) {\n        struct stat st; if (stat(e->d_name, &st) == -1) continue;\n        if (st.st_size > n) printf(\"%s (%lld bytes)\\n\", e->d_name, (long long)st.st_size);\n    }\n    closedir(d); return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Find file properties using stat() system call.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <time.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc!=2) { fprintf(stderr, \"Usage: %s file\\n\", argv[0]); return 1; }\n    struct stat st; if (stat(argv[1], &st)==-1) { perror(\"stat\"); return 1; }\n    printf(\"inode: %lu\\n\", (unsigned long)st.st_ino);\n    printf(\"links: %lu\\n\", (unsigned long)st.st_nlink);\n    printf(\"size: %lld\\n\", (long long)st.st_size);\n    printf(\"atime: %s\", ctime(&st.st_atime));\n    printf(\"mtime: %s\", ctime(&st.st_mtime));\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Display all files from current directory whose size is greater than n bytes.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <sys/stat.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc!=2) { fprintf(stderr,\"Usage: %s n_bytes\\n\", argv[0]); return 1; }\n    long n = atol(argv[1]); DIR *d = opendir(\".\"); if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *e; while((e = readdir(d)) != NULL) {\n        struct stat st; if (stat(e->d_name, &st)==-1) continue;\n        if (st.st_size > n) printf(\"%s (%lld)\\n\", e->d_name, (long long)st.st_size);\n    }\n    closedir(d); return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Create a child that runs Linux/Unix command; parent handles death & alarm; kill child if not done in 5 seconds.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\npid_t child = -1;\nvoid alarm_handler(int sig) { (void)sig; if (child > 0) { kill(child, SIGKILL); printf(\"Parent: killed child due to timeout\\n\"); } }\nvoid chld_handler(int sig) { (void)sig; int st; wait(&st); if (WIFEXITED(st)) printf(\"Parent: child exited %d\\n\", WEXITSTATUS(st)); }\nint main(int argc, char *argv[]) {\n    if (argc < 2) { fprintf(stderr,\"Usage: %s cmd [args...]\\n\", argv[0]); return 1; }\n    child = fork(); if (child == 0) { execvp(argv[1], &argv[1]); perror(\"execvp\"); _exit(127); }\n    signal(SIGALRM, alarm_handler); signal(SIGCHLD, chld_handler); alarm(5);\n    while (1) pause(); return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Display all files from current directory created in a particular month.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <sys/stat.h>\n#include <time.h>\n#include <stdlib.h>\n\nint main(int argc, char *argv[]) {\n    if (argc!=2) { fprintf(stderr,\"Usage: %s month(1-12)\\n\", argv[0]); return 1; }\n    int m = atoi(argv[1]); if (m<1 || m>12) { fprintf(stderr,\"invalid month\\n\"); return 1; }\n    DIR *d = opendir(\".\"); if(!d){perror(\"opendir\");return 1;}\n    struct dirent *e; while((e=readdir(d))!=NULL){ struct stat st; if(stat(e->d_name,&st)==-1) continue; struct tm *tm = localtime(&st.st_mtime); if(tm && (tm->tm_mon+1)==m) printf(\"%s\\n\", e->d_name); }\n    closedir(d); return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Child catches SIGHUP, SIGINT, SIGQUIT; parent sends signals every 3 seconds and SIGQUIT at 30 seconds. Child prints “My DADDY has Killed me!!!”.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <signal.h>\n#include <unistd.h>\n#include <sys/wait.h>\n\nvoid child_handler(int sig) {\n    if (sig == SIGHUP) printf(\"Child: got SIGHUP\\n\");\n    else if (sig == SIGINT) printf(\"Child: got SIGINT\\n\");\n    else if (sig == SIGQUIT) { printf(\"My DADDY has Killed me!!!\\n\"); _exit(0); }\n}\nint main(void) {\n    pid_t pid = fork(); if (pid==0) { signal(SIGHUP, child_handler); signal(SIGINT, child_handler); signal(SIGQUIT, child_handler); while(1) pause(); }\n    else { for (int t=3; t<=30; t+=3) { sleep(3); if (t<30) kill(pid, (t%6==0)?SIGINT:SIGHUP); else kill(pid,SIGQUIT); printf(\"Parent: sent signal at %d\\n\", t); } wait(NULL); }\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Read the current directory and display file names and count.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n#include <stdlib.h>\n\nint main(void) {\n    DIR *d = opendir(\".\"); if (!d) { perror(\"opendir\"); return 1; }\n    struct dirent *e; int cnt=0; while((e=readdir(d))!=NULL) { printf(\"%s\\n\", e->d_name); cnt++; }\n    closedir(d); printf(\"Total: %d\\n\", cnt); return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Implement ls -l | wc -l using fork, pipe, exec, blocking Ctrl-C and Ctrl-\\.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\nint main(void) {\n    sigset_t set; sigemptyset(&set); sigaddset(&set, SIGINT); sigaddset(&set, SIGQUIT); sigprocmask(SIG_BLOCK, &set, NULL);\n    int p[2]; if(pipe(p)==-1){perror(\"pipe\");return 1;}\n    if (fork()==0) { dup2(p[1],1); close(p[0]); close(p[1]); execlp(\"ls\",\"ls\",\"-l\",NULL); perror(\"ls\"); _exit(1); }\n    if (fork()==0) { dup2(p[0],0); close(p[0]); close(p[1]); execlp(\"wc\",\"wc\",\"-l\",NULL); perror(\"wc\"); _exit(1); }\n    close(p[0]); close(p[1]); wait(NULL); wait(NULL);\n    return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Find whether a given file is present in current directory.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n\nint main(int argc, char *argv[]) {\n    if (argc!=2) { fprintf(stderr,\"Usage: %s filename\\n\", argv[0]); return 1; }\n    struct stat st; if (stat(argv[1], &st)==0) printf(\"%s present\\n\", argv[1]); else printf(\"%s NOT present\\n\", argv[1]);\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Child writes 3 messages to an unnamed pipe; parent displays them.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <string.h>\n#include <sys/wait.h>\n\nint main(void) {\n    int fd[2]; pipe(fd);\n    if (fork()==0) { close(fd[0]); const char *msgs[]={\"Hello World\",\"Hello SPPU\",\"Linux is Funny\"}; for(int i=0;i<3;i++){ write(fd[1], msgs[i], strlen(msgs[i])+1); sleep(1);} close(fd[1]); return 0; }\n    close(fd[1]); char buf[128]; for(int i=0;i<3;i++){ read(fd[0], buf, sizeof(buf)); printf(\"Parent received: %s\\n\", buf);} close(fd[0]); wait(NULL); return 0;\n}\n"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Take multiple files as command line arguments and print their type and inode number.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n\nint main(int argc, char *argv[]) {\n    if (argc<2) { fprintf(stderr,\"Usage: %s file...\\n\", argv[0]); return 1; }\n    for (int i=1;i<argc;i++){\n        struct stat st; if (stat(argv[i], &st)==-1) { perror(argv[i]); continue; }\n        printf(\"%s: inode=%lu, type=\", argv[i], (unsigned long)st.st_ino);\n        if (S_ISREG(st.st_mode)) printf(\"regular\\n\"); else if (S_ISDIR(st.st_mode)) printf(\"dir\\n\"); else printf(\"other\\n\");\n    }\n    return 0;\n}\n"
+      },
+      {
+        "qno": 2,
+        "question": "Implement ls -l | wc -l using fork, pipe, exec.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <sys/wait.h>\n\nint main(void){int p[2];pipe(p); if(fork()==0){dup2(p[1],1);close(p[0]);close(p[1]);execlp(\"ls\",\"ls\",\"-l\",NULL);_exit(1);} if(fork()==0){dup2(p[0],0);close(p[0]);close(p[1]);execlp(\"wc\",\"wc\",\"-l\",NULL);_exit(1);} close(p[0]);close(p[1]); wait(NULL); wait(NULL); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Illustrate suspending and resuming processes using signals.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <signal.h>\n\nint main(void){ printf(\"PID=%d\\n\", getpid()); printf(\"Use 'kill -STOP PID' and 'kill -CONT PID' to suspend/resume\\n\"); while(1) pause(); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Identify file type of given file using stat().",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n#include <stdlib.h>\n\nint main(int argc,char *argv[]){ if(argc!=2){fprintf(stderr,\"Usage: %s path\\n\",argv[0]);return 1;} struct stat st; if(lstat(argv[1],&st)==-1){perror(\"lstat\");return 1;} if(S_ISREG(st.st_mode)) printf(\"regular\\n\"); else if(S_ISDIR(st.st_mode)) printf(\"directory\\n\"); else if(S_ISLNK(st.st_mode)) printf(\"symlink\\n\"); else printf(\"other\\n\"); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Read current directory and display filenames and count.",
+        "answer": "#include <stdio.h>\n#include <dirent.h>\n\nint main(void){ DIR *d = opendir(\".\"); if(!d){perror(\"opendir\");return 1;} struct dirent *e; int c=0; while((e=readdir(d))){ printf(\"%s\\n\", e->d_name); c++; } closedir(d); printf(\"Count=%d\\n\", c); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Receive filenames as command line args and display them in ascending order by size.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <sys/stat.h>\n#include <string.h>\n\nint cmp(const void *a, const void *b){ const char *fa=*(const char**)a; const char *fb=*(const char**)b; struct stat sa,sb; stat(fa,&sa); stat(fb,&sb); if(sa.st_size<sb.st_size) return -1; if(sa.st_size>sb.st_size) return 1; return strcmp(fa,fb); }\nint main(int argc,char *argv[]){ if(argc<2){fprintf(stderr,\"Usage: %s files...\\n\",argv[0]);return 1;} qsort(&argv[1], argc-1, sizeof(char*), cmp); for(int i=1;i<argc;i++) printf(\"%s\\n\", argv[i]); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Demonstrate redirection of standard output to a file.",
+        "answer": "#include <stdio.h>\n#include <fcntl.h>\n#include <unistd.h>\n\nint main(void){ int fd=open(\"redirect.txt\",O_WRONLY|O_CREAT|O_TRUNC,0644); if(fd<0){perror(\"open\");return 1;} dup2(fd,1); close(fd); printf(\"Redirected output to redirect.txt\\n\"); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Implement ls -l | wc -l using fork, pipe, exec; block Ctrl-C and Ctrl-\\.",
+        "answer": "#include <stdio.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\nint main(void){ sigset_t set; sigemptyset(&set); sigaddset(&set,SIGINT); sigaddset(&set,SIGQUIT); sigprocmask(SIG_BLOCK,&set,NULL); int p[2]; pipe(p); if(fork()==0){ dup2(p[1],1); close(p[0]); close(p[1]); execlp(\"ls\",\"ls\",\"-l\",NULL); _exit(1);} if(fork()==0){ dup2(p[0],0); close(p[0]); close(p[1]); execlp(\"wc\",\"wc\",\"-l\",NULL); _exit(1);} close(p[0]); close(p[1]); wait(NULL); wait(NULL); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Find whether a given file is present in current directory.",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n\nint main(int argc,char *argv[]){ if(argc!=2){fprintf(stderr,\"Usage: %s file\\n\",argv[0]);return 1;} struct stat st; if(stat(argv[1],&st)==0) printf(\"%s present\\n\", argv[1]); else printf(\"%s NOT present\\n\", argv[1]); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Identify file type using stat().",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n\nint main(int argc,char *argv[]){ if(argc!=2){fprintf(stderr,\"Usage: %s path\\n\",argv[0]);return 1;} struct stat st; if(lstat(argv[1],&st)==-1){perror(\"lstat\");return 1;} if(S_ISREG(st.st_mode)) printf(\"regular\\n\"); else if(S_ISDIR(st.st_mode)) printf(\"directory\\n\"); else if(S_ISLNK(st.st_mode)) printf(\"symlink\\n\"); else if(S_ISCHR(st.st_mode)) printf(\"char device\\n\"); else if(S_ISBLK(st.st_mode)) printf(\"block device\\n\"); else if(S_ISFIFO(st.st_mode)) printf(\"fifo\\n\"); else if(S_ISSOCK(st.st_mode)) printf(\"socket\\n\"); else printf(\"unknown\\n\"); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Print the type of file and inode number (file name via command line).",
+        "answer": "#include <stdio.h>\n#include <sys/stat.h>\n\nint main(int argc,char *argv[]){ if(argc!=2){fprintf(stderr,\"Usage: %s file\\n\",argv[0]);return 1;} struct stat st; if(stat(argv[1],&st)==-1){perror(\"stat\");return 1;} printf(\"inode=%lu, type=\", (unsigned long)st.st_ino); if(S_ISREG(st.st_mode)) printf(\"regular\\n\"); else if(S_ISDIR(st.st_mode)) printf(\"directory\\n\"); else printf(\"other\\n\"); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Child process runs a command; parent handles signals & kills child after 5 seconds if needed.",
+        "answer": "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <signal.h>\n#include <sys/wait.h>\n\npid_t child=-1;\nvoid alarm_handler(int sig){ (void)sig; if(child>0){ kill(child,SIGKILL); printf(\"Parent: killed child due to timeout\\n\"); } }\nvoid chld_handler(int sig){ (void)sig; wait(NULL); }\nint main(int argc,char *argv[]){ if(argc<2){fprintf(stderr,\"Usage: %s cmd [args]\\n\",argv[0]);return 1;} child=fork(); if(child==0){ execvp(argv[1], &argv[1]); perror(\"execvp\"); _exit(127);} signal(SIGALRM, alarm_handler); signal(SIGCHLD, chld_handler); alarm(5); while(1) pause(); return 0; }\n"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Demonstrate redirection of standard output to a file.",
+        "answer": "#include <stdio.h>\n#include <fcntl.h>\n#include <unistd.h>\n\nint main(void){ int fd=open(\"out.txt\",O_WRONLY|O_CREAT|O_TRUNC,0644); if(fd<0){perror(\"open\");return 1;} if(dup2(fd,1)==-1){perror(\"dup2\");return 1;} close(fd); printf(\"Redirected to out.txt\\n\"); return 0; }\n"
+      },
+      {
+        "qno": 2,
+        "question": "Redirect standard output to output.txt using dup and open.",
+        "answer": "#include <stdio.h>\n#include <fcntl.h>\n#include <unistd.h>\n\nint main(void){ int fd = open(\"output.txt\", O_WRONLY|O_CREAT|O_TRUNC, 0644); if(fd<0){perror(\"open\");return 1;} if(dup2(fd, STDOUT_FILENO)==-1){perror(\"dup2\");return 1;} close(fd); printf(\"This line is in output.txt\\n\"); return 0; }\n"
+      }
+    ]
+  }
+],
+
+"ai":
+[
+  {
+    "id": 1,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Python program that demonstrates the hill climbing algorithm to find the maximum of a mathematical function.(For example f(x) = -x^2 + 4x)",
+        "answer": "# Explanation: Simple hill-climbing on f(x) = -x^2 + 4x using small step moves. Stops when no neighbor improves.\n\ndef f(x):\n    return -x*x + 4*x\n\n\ndef hill_climb(start=0.0, step=0.1, max_iter=1000):\n    x = start\n    for i in range(max_iter):\n        neighbors = [x - step, x + step]\n        best = x\n        for n in neighbors:\n            if f(n) > f(best):\n                best = n\n        if best == x:\n            break\n        x = best\n    return x, f(x)\n\nif __name__ == '__main__':\n    x_opt, val = hill_climb(start=0.0, step=0.01)\n    print(f\"Found max at x={x_opt:.6f} with f(x)={val:.6f}\")"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Depth First Search algorithm. Refer the following graph as an Input for the program. [Initial node=1,Goal node=8]",
+        "answer": "# Explanation: Iterative DFS using adjacency list. Prints path if goal found.\n\nfrom collections import defaultdict\n\n\ndef dfs(graph, start, goal):\n    visited = set()\n    stack = [(start, [start])]\n    while stack:\n        node, path = stack.pop()\n        if node == goal:\n            return path\n        if node in visited:\n            continue\n        visited.add(node)\n        for nbr in reversed(graph[node]):  # reverse to simulate typical DFS order\n            if nbr not in visited:\n                stack.append((nbr, path + [nbr]))\n    return None\n\nif __name__ == '__main__':\n    # Example graph (customize edges as needed)\n    G = defaultdict(list)\n    edges = [(1,2),(1,3),(2,4),(2,5),(3,6),(3,7),(5,8),(6,8)]\n    for u,v in edges:\n        G[u].append(v)\n        G[v]  # ensure key exists\n    path = dfs(G, 1, 8)\n    if path:\n        print('DFS path:', path)\n    else:\n        print('Goal not reachable')"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to generate Calendar for the given month and year?",
+        "answer": "# Explanation: Uses built-in calendar module to print the month's calendar.\n\nimport calendar\n\nif __name__ == '__main__':\n    y = int(input('Enter year (e.g. 2025): '))\n    m = int(input('Enter month (1-12): '))\n    print('\\n' + calendar.month(y, m))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Depth First Search algorithm. Refer the following graph as an Input for the program.[Initial node=1,Goal node=7].",
+        "answer": "# Explanation: DFS recursive implementation returning path to goal.\n\nfrom collections import defaultdict\n\n\ndef dfs_recursive(graph, node, goal, visited=None, path=None):\n    if visited is None: visited = set()\n    if path is None: path = []\n    visited.add(node)\n    path = path + [node]\n    if node == goal:\n        return path\n    for nbr in graph[node]:\n        if nbr not in visited:\n            res = dfs_recursive(graph, nbr, goal, visited, path)\n            if res:\n                return res\n    return None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [(1,2),(1,3),(2,4),(2,5),(3,6),(5,7),(6,7)]\n    for u,v in edges:\n        G[u].append(v)\n    path = dfs_recursive(G, 1, 7)\n    print('DFS path:' if path else 'Not found', path)"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to remove punctuations from the given string?",
+        "answer": "# Explanation: Remove punctuation using str.translate and string.punctuation.\n\nimport string\n\n\ndef remove_punct(s):\n    table = str.maketrans('', '', string.punctuation)\n    return s.translate(table)\n\nif __name__ == '__main__':\n    s = input('Enter text: ') or 'Hello, world! This is an example.'\n    print(remove_punct(s))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Depth First Search algorithm. Refer the following graph as an Input for the program.[Initial node=2,Goal node=7]",
+        "answer": "# Explanation: Iterative DFS from node 2 to 7.\n\nfrom collections import defaultdict\n\n\ndef dfs(graph, start, goal):\n    visited = set()\n    stack = [(start, [start])]\n    while stack:\n        node, path = stack.pop()\n        if node == goal:\n            return path\n        if node in visited:\n            continue\n        visited.add(node)\n        for nbr in reversed(graph[node]):\n            if nbr not in visited:\n                stack.append((nbr, path + [nbr]))\n    return None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [(2,1),(2,3),(1,4),(3,5),(4,7),(5,7)]\n    for u,v in edges:\n        G[u].append(v)\n    print(dfs(G, 2, 7))"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a program to implement Hangman game using python. Description: Hangman is a classic word-guessing game. The user should guess the word correctly by entering alphabets of the user choice. The Program will get input as single alphabet from the user and it will matchmaking with the alphabets in the original",
+        "answer": "# Explanation: Simple console Hangman. No graphics, limited attempts.\n\nimport random\n\nWORDS = ['python','hangman','university','computer','algorithm']\n\n\ndef hangman():\n    word = random.choice(WORDS)\n    guessed = set()\n    attempts = 6\n    while attempts > 0:\n        display = ' '.join([c if c in guessed else '_' for c in word])\n        print('\\nWord:', display)\n        if all(c in guessed for c in word):\n            print('You won!')\n            return\n        ch = input('Guess a letter: ').lower().strip()\n        if not ch or len(ch) != 1:\n            print('Enter one letter')\n            continue\n        if ch in guessed:\n            print('Already guessed')\n            continue\n        if ch in word:\n            print('Correct')\n            guessed.add(ch)\n        else:\n            attempts -= 1\n            print('Wrong. Attempts left:', attempts)\n    print('You lost. Word was', word)\n\nif __name__ == '__main__':\n    hangman()"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Breadth First Search algorithm. Refer the following graph as an Input for the program.[Initial node=1,Goal node=8]",
+        "answer": "# Explanation: BFS using queue to find shortest path (in terms of edges).\n\nfrom collections import deque, defaultdict\n\n\ndef bfs_path(graph, start, goal):\n    q = deque([(start, [start])])\n    visited = {start}\n    while q:\n        node, path = q.popleft()\n        if node == goal:\n            return path\n        for nbr in graph[node]:\n            if nbr not in visited:\n                visited.add(nbr)\n                q.append((nbr, path + [nbr]))\n    return None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [(1,2),(1,3),(2,4),(2,5),(3,6),(5,8),(6,8)]\n    for u,v in edges:\n        G[u].append(v)\n        G[v]\n    print(bfs_path(G,1,8))"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to implement Lemmatization using NLTK",
+        "answer": "# Explanation: Use NLTK WordNetLemmatizer. Uncomment downloads on first run.\n\n# import nltk\n# nltk.download('wordnet')\n# nltk.download('omw-1.4')\n\nfrom nltk.stem import WordNetLemmatizer\n\n\ndef lemmatize_sentence(sent):\n    lemmatizer = WordNetLemmatizer()\n    return ' '.join(lemmatizer.lemmatize(w) for w in sent.split())\n\nif __name__ == '__main__':\n    s = input('Enter sentence: ') or 'The striped bats are hanging on their feet for best'\n    print(lemmatize_sentence(s))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Breadth First Search algorithm. Refer the following graph as an Input for the program.[Initial node=1,Goal node=8]",
+        "answer": "# Explanation: BFS implementation (duplicate of earlier BFS but included as required).\n\nfrom collections import deque, defaultdict\n\n\ndef bfs(graph, start, goal):\n    q = deque([start])\n    parent = {start: None}\n    while q:\n        node = q.popleft()\n        if node == goal:\n            path = []\n            while node is not None:\n                path.append(node)\n                node = parent[node]\n            return path[::-1]\n        for nbr in graph[node]:\n            if nbr not in parent:\n                parent[nbr] = node\n                q.append(nbr)\n    return None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [(1,2),(1,3),(2,4),(2,5),(3,6),(5,8),(6,8)]\n    for u,v in edges: G[u].append(v)\n    print(bfs(G,1,8))"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to remove stop words for a given passage from a text file using NLTK?",
+        "answer": "# Explanation: Remove stopwords using NLTK. Uncomment downloads if first run.\n\n# import nltk\n# nltk.download('stopwords')\n\nfrom nltk.corpus import stopwords\n\n\ndef remove_stopwords(text):\n    sw = set(stopwords.words('english'))\n    return ' '.join(w for w in text.split() if w.lower() not in sw)\n\nif __name__ == '__main__':\n    fname = input('Filename (text file): ')\n    with open(fname) as f:\n        text = f.read()\n    print(remove_stopwords(text))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Breadth First Search algorithm. Refer the following graph as an Input for the program.[Initial node=1,Goal node=8].",
+        "answer": "# Explanation: BFS that prints expanded nodes order and final path.\n\nfrom collections import deque, defaultdict\n\n\ndef bfs_show(graph, start, goal):\n    q = deque([start])\n    parent = {start: None}\n    expanded = []\n    while q:\n        node = q.popleft()\n        expanded.append(node)\n        if node == goal:\n            path = []\n            while node is not None:\n                path.append(node)\n                node = parent[node]\n            return expanded, path[::-1]\n        for nbr in graph[node]:\n            if nbr not in parent:\n                parent[nbr] = node\n                q.append(nbr)\n    return expanded, None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [(1,2),(1,3),(2,4),(2,5),(3,6),(5,8),(6,8)]\n    for u,v in edges: G[u].append(v)\n    exp, path = bfs_show(G,1,8)\n    print('Expanded:', exp)\n    print('Path:', path)"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program implement tic-tac-toe using alpha beeta pruning",
+        "answer": "# Explanation: Simple tic-tac-toe with minimax + alpha-beta. 'X' is human, 'O' is AI.\n\nimport math\n\n\ndef print_board(b):\n    for i in range(3):\n        print(' '.join(b[i*3:(i+1)*3]))\n\n\ndef winner(b):\n    lines = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]\n    for a,bp,c in lines:\n        if b[a] == b[bp] == b[c] and b[a] != '_':\n            return b[a]\n    if '_' not in b:\n        return 'D'\n    return None\n\n\ndef minimax(b, player, alpha, beta):\n    w = winner(b)\n    if w == 'O': return (1, None)\n    if w == 'X': return (-1, None)\n    if w == 'D': return (0, None)\n    if player == 'O':\n        best = (-math.inf, None)\n        for i in range(9):\n            if b[i]=='_':\n                b[i]='O'\n                score,_ = minimax(b,'X',alpha,beta)\n                b[i]='_'\n                if score>best[0]: best=(score,i)\n                alpha = max(alpha, score)\n                if beta <= alpha: break\n        return best\n    else:\n        best = (math.inf, None)\n        for i in range(9):\n            if b[i]=='_':\n                b[i]='X'\n                score,_ = minimax(b,'O',alpha,beta)\n                b[i]='_'\n                if score<best[0]: best=(score,i)\n                beta = min(beta, score)\n                if beta <= alpha: break\n        return best\n\nif __name__ == '__main__':\n    board = ['_']*9\n    while True:\n        print_board(board)\n        if winner(board): break\n        # human move\n        mv = int(input('Your move (0-8): '))\n        if board[mv] != '_':\n            print('Invalid')\n            continue\n        board[mv] = 'X'\n        if winner(board): break\n        # AI move\n        score, mv = minimax(board, 'O', -math.inf, math.inf)\n        board[mv] = 'O'\n    print_board(board)\n    print('Result:', winner(board))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Simple Chatbot.",
+        "answer": "# Explanation: Very simple rule-based chatbot using keywords.\n\n\ndef chatbot():\n    print('Hello! I am a simple chatbot. Type exit to quit.')\n    while True:\n        msg = input('You: ').lower()\n        if msg in ('exit','quit'):\n            print('Bot: Bye!')\n            break\n        if 'hello' in msg or 'hi' in msg:\n            print('Bot: Hello there!')\n        elif 'college' in msg or 'university' in msg:\n            print('Bot: I study and teach at the college. Ask specifics like \"fee\" or \"courses\".')\n        elif 'courses' in msg:\n            print('Bot: We offer CS, AI, ML and more.')\n        elif 'name' in msg:\n            print('Bot: You can call me SimpleBot.')\n        else:\n            print('Bot: Sorry, I do not understand. Try asking about \"courses\", \"fees\" or say \"hello\".')\n\nif __name__ == '__main__':\n    chatbot()"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Python program to accept a string. Find and print the number of upper case alphabets and lower case alphabets.",
+        "answer": "# Explanation: Count uppercase and lowercase letters.\n\nif __name__ == '__main__':\n    s = input('Enter string: ')\n    up = sum(1 for c in s if c.isupper())\n    low = sum(1 for c in s if c.islower())\n    print('Uppercase:', up)\n    print('Lowercase:', low)"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to solve tic-tac-toe problem.",
+        "answer": "# Explanation: Simple random-player vs human or human vs human. Provides win detection.\n\nimport random\n\n\ndef print_board(b):\n    for i in range(3): print(' '.join(b[3*i:3*i+3]))\n\n\ndef winner(b):\n    lines = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]\n    for a,bp,c in lines:\n        if b[a]==b[bp]==b[c] and b[a] != '_':\n            return b[a]\n    if '_' not in b: return 'D'\n    return None\n\nif __name__ == '__main__':\n    board = ['_']*9\n    turn = 'X'\n    while True:\n        print_board(board)\n        if winner(board): break\n        if turn == 'X':\n            mv = int(input('X move (0-8): '))\n        else:\n            mv = random.choice([i for i,v in enumerate(board) if v=='_'])\n            print('O chooses', mv)\n        if board[mv] != '_':\n            print('Invalid move')\n            continue\n        board[mv] = turn\n        turn = 'O' if turn=='X' else 'X'\n    print_board(board)\n    print('Result:', winner(board))"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write python program to solve 8 puzzle problem using A* algorithm",
+        "answer": "# Explanation: A* for 8-puzzle using Manhattan distance. Simple implementation; ensure solvable start.\n\nimport heapq\n\n\ndef manhattan(state):\n    goal_pos = {1:(0,0),2:(0,1),3:(0,2),4:(1,0),5:(1,1),6:(1,2),7:(2,0),8:(2,1),0:(2,2)}\n    s = str(state)\n    h = 0\n    for i,ch in enumerate(s):\n        val = int(ch)\n        if val==0: continue\n        r,c = divmod(i,3)\n        gr,gc = goal_pos[val]\n        h += abs(r-gr)+abs(c-gc)\n    return h\n\n\ndef neighbors(state):\n    s = list(state)\n    i = s.index(0)\n    r,c = divmod(i,3)\n    moves = []\n    for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)]:\n        nr,nc = r+dr, c+dc\n        if 0<=nr<3 and 0<=nc<3:\n            j = nr*3+nc\n            s2 = s[:]\n            s2[i],s2[j] = s2[j],s2[i]\n            moves.append(tuple(s2))\n    return moves\n\n\ndef astar(start):\n    start = tuple(start)\n    goal = tuple(range(1,9))+ (0,)\n    openq = [(manhattan(start), 0, start, None)]\n    came = {}\n    gscore = {start:0}\n    while openq:\n        f,g,node,parent = heapq.heappop(openq)\n        if node in came: continue\n        came[node] = parent\n        if node == goal:\n            path = []\n            while node:\n                path.append(node)\n                node = came[node]\n            return path[::-1]\n        for nb in neighbors(list(node)):\n            tentative = g+1\n            if tentative < gscore.get(nb, 1e9):\n                gscore[nb] = tentative\n                heapq.heappush(openq, (tentative + manhattan(nb), tentative, nb, node))\n    return None\n\nif __name__ == '__main__':\n    # example: 1 2 3 4 5 6 7 0 8 (one move away)\n    start = [1,2,3,4,5,6,7,0,8]\n    path = astar(start)\n    if path:\n        print('Steps:', len(path)-1)\n        for p in path:\n            for i in range(3): print(p[3*i:3*i+3])\n            print()\n    else:\n        print('No solution')"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to solve water jug problem. 2 jugs with capacity 5 gallon and 7 gallon are given with unlimited water supply respectively. The target to achieve is 4 gallon of water in second jug.",
+        "answer": "# Explanation: BFS on states (a,b). Actions: fill, empty, pour.\n\nfrom collections import deque\n\n\ndef bfs(cap1, cap2, target):\n    start = (0,0)\n    q = deque([start])\n    parent = {start: None}\n    while q:\n        a,b = q.popleft()\n        if b == target:\n            path = []\n            cur = (a,b)\n            while cur:\n                path.append(cur)\n                cur = parent[cur]\n            return path[::-1]\n        states = []\n        # fill jug1\n        states.append((cap1, b))\n        # fill jug2\n        states.append((a, cap2))\n        # empty jug1\n        states.append((0, b))\n        # empty jug2\n        states.append((a, 0))\n        # pour jug1->jug2\n        pour = min(a, cap2 - b)\n        states.append((a - pour, b + pour))\n        # pour jug2->jug1\n        pour = min(b, cap1 - a)\n        states.append((a + pour, b - pour))\n        for s in states:\n            if s not in parent:\n                parent[s] = (a,b)\n                q.append(s)\n    return None\n\nif __name__ == '__main__':\n    path = bfs(5,7,4)\n    if path:\n        for s in path: print(s)\n    else:\n        print('No solution')"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write Python program to implement crypt arithmetic problem TWO+TWO=FOUR",
+        "answer": "# Explanation: Backtracking assigning digits to letters, ensuring leading digits not zero.\n\nfrom itertools import permutations\n\n\ndef solve():\n    letters = 'T W O F U R'.split()\n    letters = [l for l in ''.join(letters) if l!=' ']\n    # Unique letters\n    letters = list(dict.fromkeys(letters))\n    for perm in permutations('0123456789', len(letters)):\n        mapping = dict(zip(letters, perm))\n        if mapping['T']=='0' or mapping['F']=='0':\n            continue\n        TWO = int(mapping['T']+mapping['W']+mapping['O'])\n        FOUR = int(mapping['F']+mapping['O']+mapping['U']+mapping['R'])\n        if TWO + TWO == FOUR:\n            return mapping, TWO, FOUR\n    return None\n\nif __name__ == '__main__':\n    res = solve()\n    if res:\n        mapping, TWO, FOUR = res\n        print('Mapping:', mapping)\n        print('TWO + TWO =', TWO, '+', TWO, '=', FOUR)\n    else:\n        print('No solution')"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Simple Chatbot.",
+        "answer": "# Explanation: Same simple rule-based chatbot as earlier.\n\ndef simple_bot():\n    print('Hi! I am SimpleBot. Type exit to quit.')\n    while True:\n        s = input('You: ').lower()\n        if s in ('exit','quit'): break\n        if 'hello' in s: print('Bot: Hello!')\n        elif 'college' in s: print('Bot: Ask about courses, departments or timings.')\n        else: print('Bot: I am a simple bot. Try \"hello\" or \"college\"')\n    print('Bye')\n\nif __name__ == '__main__':\n    simple_bot()"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program using mean end analysis algorithm problem of transforming a string of lowercase letters into another string.",
+        "answer": "# Explanation: Mean-end analysis is high-level; here implement simple BFS to transform start->goal by single-letter substitutions (like word ladder).\n\nfrom collections import deque\n\n\ndef transform(start, goal):\n    q = deque([[start]])\n    seen = {start}\n    while q:\n        path = q.popleft()\n        word = path[-1]\n        if word == goal:\n            return path\n        for i in range(len(word)):\n            for c in 'abcdefghijklmnopqrstuvwxyz':\n                nword = word[:i]+c+word[i+1:]\n                if nword not in seen:\n                    seen.add(nword)\n                    q.append(path+[nword])\n    return None\n\nif __name__ == '__main__':\n    s = input('Start: ') or 'abc'\n    g = input('Goal: ') or 'abd'\n    p = transform(s,g)\n    print(p)\n"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to solve water jug problem. Two jugs with capacity 4 gallon and 3 gallon are given with unlimited water supply respectively. The target is to achieve 2 gallon of water in second jug.",
+        "answer": "# Explanation: BFS to reach (a,b) state where b==2.\n\nfrom collections import deque\n\n\ndef bfs(cap1, cap2, target):\n    start = (0,0)\n    q = deque([start])\n    parent = {start: None}\n    while q:\n        a,b = q.popleft()\n        if b == target:\n            path=[]; cur=(a,b)\n            while cur:\n                path.append(cur); cur=parent[cur]\n            return path[::-1]\n        states = []\n        states.append((cap1, b))\n        states.append((a, cap2))\n        states.append((0,b))\n        states.append((a,0))\n        pour = min(a, cap2-b); states.append((a-pour,b+pour))\n        pour = min(b, cap1-a); states.append((a+pour,b-pour))\n        for s in states:\n            if s not in parent:\n                parent[s]= (a,b); q.append(s)\n    return None\n\nif __name__ == '__main__':\n    path = bfs(4,3,2)\n    if path:\n        for p in path: print(p)\n    else: print('No solution')"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to generate Calendar for the given month and year?",
+        "answer": "# Explanation: Same as earlier calendar generator using calendar module.\n\nimport calendar\n\ny = int(input('Year: '))\nm = int(input('Month: '))\nprint(calendar.month(y,m))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to simulate 4-Queens problem.",
+        "answer": "# Explanation: Backtracking to place 4 queens on 4x4 board.\n\n\ndef solve_n(n):\n    res = []\n    cols = set(); diag1 = set(); diag2 = set()\n    board = [-1]*n\n    def back(r):\n        if r==n:\n            res.append(board[:]); return\n        for c in range(n):\n            if c in cols or (r-c) in diag1 or (r+c) in diag2: continue\n            cols.add(c); diag1.add(r-c); diag2.add(r+c)\n            board[r]=c\n            back(r+1)\n            cols.remove(c); diag1.remove(r-c); diag2.remove(r+c)\n    back(0)\n    return res\n\nif __name__ == '__main__':\n    sols = solve_n(4)\n    for s in sols:\n        for r in range(4):\n            print(''.join('Q' if c==s[r] else '.' for c in range(4)))\n        print()"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Python program to implement Mini-Max Algorithm.",
+        "answer": "# Explanation: Minimax for a simple game tree represented as nested lists with leaf utilities.\n\n\ndef minimax(node, maximizing=True):\n    if not isinstance(node, list):\n        return node\n    if maximizing:\n        val = -10**9\n        for child in node:\n            val = max(val, minimax(child, False))\n        return val\n    else:\n        val = 10**9\n        for child in node:\n            val = min(val, minimax(child, True))\n        return val\n\nif __name__ == '__main__':\n    # Example tree: root -> two children -> leaf utilities\n    tree = [[3,5],[6,9]]\n    print('Minimax value:', minimax(tree, True))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to simulate 8-Queens problem.",
+        "answer": "# Explanation: Backtracking solver for 8-Queens, prints one solution.\n\n\ndef solve_n(n=8):\n    cols=set(); d1=set(); d2=set(); board=[-1]*n; res=[]\n    def back(r):\n        if r==n:\n            res.append(board[:]); return True\n        for c in range(n):\n            if c in cols or (r-c) in d1 or (r+c) in d2: continue\n            cols.add(c); d1.add(r-c); d2.add(r+c); board[r]=c\n            if back(r+1): return True\n            cols.remove(c); d1.remove(r-c); d2.remove(r+c)\n        return False\n    back(0)\n    return res[0]\n\nif __name__ == '__main__':\n    sol = solve_n(8)\n    for r in range(8):\n        print(''.join('Q' if c==sol[r] else '.' for c in range(8)))"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to sort the sentence in alphabetical order?",
+        "answer": "# Explanation: Split sentence into words, sort and join.\n\nif __name__ == '__main__':\n    s = input('Enter sentence: ')\n    words = s.split()\n    words.sort(key=lambda w: w.lower())\n    print(' '.join(words))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to simulate n-Queens problem.",
+        "answer": "# Explanation: Backtracking to list all solutions for given n.\n\n\ndef nqueens(n):\n    res=[]; cols=set(); d1=set(); d2=set(); board=[-1]*n\n    def back(r):\n        if r==n: res.append(board[:]); return\n        for c in range(n):\n            if c in cols or (r-c) in d1 or (r+c) in d2: continue\n            cols.add(c); d1.add(r-c); d2.add(r+c); board[r]=c\n            back(r+1)\n            cols.remove(c); d1.remove(r-c); d2.remove(r+c)\n    back(0)\n    return res\n\nif __name__ == '__main__':\n    n = int(input('n: ') or 8)\n    sols = nqueens(n)\n    print(f'Found {len(sols)} solutions for n={n}')"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Program to Implement Monkey Banana Problem using Python",
+        "answer": "# Explanation: Model simple state space and BFS; monkey needs to reach bananas by stacking boxes.\n\nfrom collections import deque\n\n\ndef monkey_banana():\n    # simplified: monkey at A, box at B, banana at C; monkey needs to move box to C then climb\n    # state: (monkey_pos, box_pos)\n    start = ('A','B')\n    goal = ('C','C')\n    q = deque([start])\n    parent = {start: None}\n    while q:\n        s = q.popleft()\n        if s == goal:\n            path=[]; cur=s\n            while cur:\n                path.append(cur); cur=parent[cur]\n            return path[::-1]\n        m,b = s\n        # moves: move monkey to adjacent place (for simplicity assume A-B-C line)\n        adj = {'A':['B'],'B':['A','C'],'C':['B']}\n        for nx in adj[m]:\n            ns = (nx, b)\n            if ns not in parent:\n                parent[ns]=s; q.append(ns)\n        # if monkey with box can push/pull (when monkey at box), move box\n        if m == b:\n            for nx in adj[m]:\n                ns = (nx, nx)\n                if ns not in parent:\n                    parent[ns]=s; q.append(ns)\n    return None\n\nif __name__ == '__main__':\n    path = monkey_banana()\n    print(path)"
+      },
+      {
+        "qno": 2,
+        "question": "Write a program to implement Iterative Deepening DFS algorithm. [ Goal Node =G]",
+        "answer": "# Explanation: Iterative Deepening DFS from start to goal on adjacency list.\n\nfrom collections import defaultdict\n\n\ndef dls(graph, node, goal, limit, visited):\n    if node == goal: return [node]\n    if limit <= 0: return None\n    visited.add(node)\n    for nbr in graph[node]:\n        if nbr not in visited:\n            path = dls(graph, nbr, goal, limit-1, visited)\n            if path: return [node]+path\n    visited.remove(node)\n    return None\n\n\ndef ids(graph, start, goal, max_depth=10):\n    for depth in range(max_depth+1):\n        path = dls(graph,start,goal,depth,set())\n        if path: return path\n    return None\n\nif __name__ == '__main__':\n    G = defaultdict(list)\n    edges = [('S','A'),('S','B'),('A','C'),('B','G'),('C','G')]\n    for u,v in edges: G[u].append(v)\n    print(ids(G,'S','G',10))"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Program to Implement Tower of Hanoi using Python",
+        "answer": "# Explanation: Recursive solution printing moves.\n\n\ndef hanoi(n, src, aux, dst):\n    if n==1:\n        print(f\"Move disk 1 from {src} to {dst}\")\n        return\n    hanoi(n-1, src, dst, aux)\n    print(f\"Move disk {n} from {src} to {dst}\")\n    hanoi(n-1, aux, src, dst)\n\nif __name__ == '__main__':\n    n = int(input('Number of disks: ') or 3)\n    hanoi(n, 'A', 'B', 'C')"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to solve tic-tac-toe problem.",
+        "answer": "# Explanation: Reused simple tic-tac-toe earlier; provide solver that uses minimax for perfect play.\n\nimport math\n\n\ndef winner(b):\n    lines=[(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]\n    for a,bp,c in lines:\n        if b[a]==b[bp]==b[c] and b[a] != '_': return b[a]\n    if '_' not in b: return 'D'\n    return None\n\n\ndef minimax(b, player):\n    w = winner(b)\n    if w == 'X': return -1\n    if w == 'O': return 1\n    if w == 'D': return 0\n    if player == 'O':\n        best = -math.inf\n        for i in range(9):\n            if b[i]=='_':\n                b[i]='O'; val = minimax(b,'X'); b[i]='_'\n                best = max(best, val)\n        return best\n    else:\n        best = math.inf\n        for i in range(9):\n            if b[i]=='_':\n                b[i]='X'; val = minimax(b,'O'); b[i]='_'\n                best = min(best, val)\n        return best\n\nif __name__ == '__main__':\n    board=['_']*9\n    while True:\n        print(board[0:3]); print(board[3:6]); print(board[6:9])\n        if winner(board): break\n        mv = int(input('Your move (0-8): '))\n        if board[mv] != '_': continue\n        board[mv] = 'X'\n        if winner(board): break\n        best = -math.inf; move=None\n        for i in range(9):\n            if board[i]=='_': board[i]='O'; val=minimax(board,'X'); board[i]='_'\n            if val>best: best=val; move=i\n        board[move]='O'\n    print('Result:', winner(board))"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Python program that demonstrates the hill climbing algorithm to find the maximum of a mathematical function.",
+        "answer": "# Explanation: Same hill-climbing as earlier; generalized function input.\n\nimport math\n\n\ndef f(x): return -x*x + 4*x\n\ndef hill(start=0.0, step=0.1, maxit=1000):\n    x = start\n    for _ in range(maxit):\n        best = x\n        for dx in (-step, step):\n            cand = x + dx\n            if f(cand) > f(best): best = cand\n        if best == x: break\n        x = best\n    return x, f(x)\n\nif __name__ == '__main__':\n    print(hill(0.0, 0.01))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement A* algorithm. Refer the following graph as an Input for the program.[ Start vertex is A and Goal Vertex is G]",
+        "answer": "# Explanation: A* on small graph, heuristic provided by user or dictionary.\n\nimport heapq\n\n\ndef astar(graph, start, goal, h):\n    openq = [(h[start], 0, start, None)]\n    came = {}\n    gscore = {start:0}\n    while openq:\n        f,g,node,parent = heapq.heappop(openq)\n        if node in came: continue\n        came[node] = parent\n        if node == goal:\n            path=[]; cur=node\n            while cur:\n                path.append(cur); cur=came[cur]\n            return path[::-1]\n        for nbr, cost in graph.get(node,[]):\n            tentative = g + cost\n            if tentative < gscore.get(nbr, 1e9):\n                gscore[nbr] = tentative\n                heapq.heappush(openq, (tentative + h.get(nbr,0), tentative, nbr, node))\n    return None\n\nif __name__ == '__main__':\n    G = {\n        'A': [('B',1),('C',2)],\n        'B': [('D',2),('E',3)],\n        'C': [('F',3)],\n        'D': [('G',5)],\n        'E': [('G',2)],\n        'F': [('G',2)]\n    }\n    h = {'A':5,'B':4,'C':4,'D':2,'E':2,'F':2,'G':0}\n    print(astar(G,'A','G',h))"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write python program to remove stop words for a given passage from a text file using NLTK?.",
+        "answer": "# Explanation: Same as earlier stopword removal using NLTK.\n\n# import nltk\n# nltk.download('stopwords')\n\nfrom nltk.corpus import stopwords\n\nif __name__ == '__main__':\n    fname = input('Filename: ')\n    text = open(fname).read()\n    sw = set(stopwords.words('english'))\n    print(' '.join(w for w in text.split() if w.lower() not in sw))"
+      },
+      {
+        "qno": 2,
+        "question": "Implement a system that performs arrangement of some set of objects in a room. Assume that you have only 5 rectangular, 4 square-shaped objects. Use A* approach for the placement of the objects in room for efficient space utilisation. Assume suitable heuristic, and dimensions of objects and rooms. (Informed Search)",
+        "answer": "# Explanation: Simplified grid packing A* where each object occupies cells; heuristic = remaining free area. This is a toy model.\n\nimport heapq\n\n\ndef pack(room_w, room_h, objects):\n    # objects: list of (w,h)\n    start = (tuple([0]*(room_w*room_h)), 0)  # occupancy map as tuple, index along, and placed count\n    def free_area(state):\n        occ,_ = state\n        return occ.count(0)\n    openq = [(0 + free_area(start), 0, start, None)]\n    visited = set()\n    while openq:\n        f,g,state,parent = heapq.heappop(openq)\n        occ,placed = state\n        if placed == len(objects):\n            # solution\n            return True\n        if state in visited: continue\n        visited.add(state)\n        # try to place next object at any top-left position without overlap (no rotation for simplicity)\n        w,h = objects[placed]\n        for r in range(room_h - h + 1):\n            for c in range(room_w - w + 1):\n                can = True\n                occ_list = list(occ)\n                for rr in range(h):\n                    for cc in range(w):\n                        idx = (r+rr)*room_w + (c+cc)\n                        if occ_list[idx] != 0: can = False; break\n                    if not can: break\n                if not can: continue\n                for rr in range(h):\n                    for cc in range(w):\n                        idx = (r+rr)*room_w + (c+cc)\n                        occ_list[idx] = placed+1\n                new_state = (tuple(occ_list), placed+1)\n                heuristic = free_area(new_state)\n                heapq.heappush(openq, (g+1+heuristic, g+1, new_state, state))\n    return False\n\nif __name__ == '__main__':\n    room_w, room_h = 6, 4\n    objects = [(2,1),(2,2),(1,1),(3,1),(1,2),(2,2),(1,1),(1,1),(2,1)]  # 5 rect + 4 squares\n    print('Packing possible:', pack(room_w, room_h, objects))"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a program to implement Hangman game using python. Description: Hangman is a classic word-guessing game. The user should guess the word correctly by entering alphabets of the user choice. The Program will get input as single alphabet from the user and it will matchmaking with the alphabets in the original word.",
+        "answer": "# Explanation: Same Hangman implementation as earlier.\n\nimport random\n\nWORDS=['banana','computer','science','hangman']\n\ndef hangman():\n    word = random.choice(WORDS)\n    guessed=set(); attempts=6\n    while attempts>0:\n        disp = ' '.join(c if c in guessed else '_' for c in word)\n        print(disp)\n        if all(c in guessed for c in word): print('Won'); return\n        ch = input('Guess: ').lower()\n        if ch in word: guessed.add(ch)\n        else: attempts-=1; print('Wrong', attempts)\n    print('Lost, word was', word)\n\nif __name__=='__main__': hangman()"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement A* algorithm. Refer the following graph as an Input for the program.",
+        "answer": "# Explanation: Reused generic A* implementation; small sample graph.\n\nimport heapq\n\n\ndef astar(graph, start, goal, h):\n    openq=[(h[start],0,start,None)]; came={}; gscore={start:0}\n    while openq:\n        f,g,node,parent=heapq.heappop(openq)\n        if node in came: continue\n        came[node]=parent\n        if node==goal:\n            p=[]; cur=node\n            while cur: p.append(cur); cur=came[cur]\n            return p[::-1]\n        for nbr,cost in graph.get(node,[]):\n            t = g+cost\n            if t < gscore.get(nbr,1e9):\n                gscore[nbr]=t; heapq.heappush(openq,(t+h.get(nbr,0),t,nbr,node))\n    return None\n\nif __name__=='__main__':\n    G = {'S':[('A',1),('B',4)], 'A':[('C',2)], 'B':[('C',1)], 'C':[('G',3)], 'G':[]}\n    h = {'S':4,'A':3,'B':3,'C':1,'G':0}\n    print(astar(G,'S','G',h))"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Build a bot which provides all the information related to you in college",
+        "answer": "# Explanation: Simple rule-based college info bot; prints canned info.\n\ndef college_bot():\n    info = {\n        'name':'ABC College', 'address':'123 Campus Rd', 'courses':'BSc, MSc, MTech', 'contact':'contact@abc.edu'\n    }\n    print('Ask about name, address, courses or contact. Type exit to quit.')\n    while True:\n        q = input('You: ').lower()\n        if q in ('exit','quit'): break\n        if 'name' in q: print(info['name'])\n        elif 'address' in q: print(info['address'])\n        elif 'courses' in q: print(info['courses'])\n        elif 'contact' in q: print(info['contact'])\n        else: print('I can tell name, address, courses, contact')\n\nif __name__=='__main__': college_bot()"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Mini-Max Algorithm.",
+        "answer": "# Explanation: Minimax example as earlier; applied to small game tree.\n\n\ndef minimax(node, maximizing=True):\n    if not isinstance(node, list): return node\n    if maximizing:\n        return max(minimax(child, False) for child in node)\n    else:\n        return min(minimax(child, True) for child in node)\n\nif __name__=='__main__':\n    tree = [[3,5,2],[1,4]]\n    print('Value:', minimax(tree, True))"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to remove punctuations from the given string?",
+        "answer": "# Explanation: Same punctuation removal.\n\nimport string\n\ns = input('Enter string: ')\nprint(''.join(ch for ch in s if ch not in string.punctuation))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program for the following Cryptarithmetic problems. GO + TO = OUT",
+        "answer": "# Explanation: Solve GO + TO = OUT by brute-force permutations.\n\nfrom itertools import permutations\n\nletters = set(list('GOTU'))\nfor perm in permutations('0123456789', len(letters)):\n    mp = dict(zip(letters, perm))\n    if mp['G']=='0' or mp['T']=='0' or mp['O']=='0' or mp['O']=='0':\n        pass\n    GO = int(mp['G']+mp['O'])\n    TO = int(mp['T']+mp['O'])\n    OUT = int(mp['O']+mp['U']+mp['T'])\n    if GO + TO == OUT:\n        print('Mapping', mp)\n        print(f'{GO} + {TO} = {OUT}')\n        break"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Program to Implement Alpha-Beta Pruning using Python",
+        "answer": "# Explanation: Alpha-beta on a sample tree.\n\nimport math\n\n\ndef alphabeta(node, depth, alpha, beta, maximizing):\n    if not isinstance(node, list): return node\n    if maximizing:\n        value = -math.inf\n        for child in node:\n            value = max(value, alphabeta(child, depth+1, alpha, beta, False))\n            alpha = max(alpha, value)\n            if alpha >= beta: break\n        return value\n    else:\n        value = math.inf\n        for child in node:\n            value = min(value, alphabeta(child, depth+1, alpha, beta, True))\n            beta = min(beta, value)\n            if alpha >= beta: break\n        return value\n\nif __name__ == '__main__':\n    tree = [[3,5],[6,9]]\n    print('AlphaBeta value:', alphabeta(tree,0,-math.inf,math.inf,True))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to implement Simple Chatbot",
+        "answer": "# Explanation: Slightly enhanced simple chatbot with small knowledge base.\n\nKB = {\n    'hi':'Hello!', 'hello':'Hi!', 'courses':'We have CS, AI, ML.', 'fees':'Contact admissions for fees.'\n}\n\nwhile True:\n    q = input('You: ').lower()\n    if q in ('exit','quit'): break\n    resp = None\n    for k in KB:\n        if k in q: resp = KB[k]; break\n    print('Bot:', resp if resp else \"I don't understand. Try 'courses' or 'fees'.\")"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a Program to Implement Tower of Hanoi using Python.",
+        "answer": "# Explanation: Same recursive Tower of Hanoi.\n\ndef hanoi(n, src, aux, dst):\n    if n==1: print(f'Move 1 from {src} to {dst}'); return\n    hanoi(n-1, src, dst, aux)\n    print(f'Move {n} from {src} to {dst}')\n    hanoi(n-1, aux, src, dst)\n\nn = int(input('n: ') or 3)\nhanoi(n,'A','B','C')"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program for the following Cryptarithmetic problems SEND + MORE = MONEY",
+        "answer": "# Explanation: Classic cryptarithmetic solver via permutations.\n\nfrom itertools import permutations\n\nletters = set('SENDMORY')\nletters = list(letters)\nfor perm in permutations('0123456789', len(letters)):\n    mp = dict(zip(letters, perm))\n    if mp['S']=='0' or mp['M']=='0': continue\n    SEND = int(''.join(mp[c] for c in 'SEND'))\n    MORE = int(''.join(mp[c] for c in 'MORE'))\n    MONEY = int(''.join(mp[c] for c in 'MONEY'))\n    if SEND + MORE == MONEY:\n        print('Mapping:', mp)\n        print(SEND, '+', MORE, '=', MONEY)\n        break"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Write a python program to sort the sentence in alphabetical order?",
+        "answer": "# Explanation: Same as earlier sentence-sorting.\n\ns = input('Sentence: ')\nwords = s.split()\nwords.sort(key=str.lower)\nprint(' '.join(words))"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program for the following Cryptorithmetic problems CROSS+ROADS = DANGER",
+        "answer": "# Explanation: Solve CROSS + ROADS = DANGER via brute force permutations. May take time.\n\nfrom itertools import permutations\n\nletters = set('C R O S A D N G E'.split())\nletters = [l for l in ''.join(letters) if l!=' ']\nletters = list(dict.fromkeys(letters))\nfor perm in permutations('0123456789', len(letters)):\n    mp = dict(zip(letters, perm))\n    if mp.get('C','0')=='0' or mp.get('R','0')=='0' or mp.get('D','0')=='0':\n        continue\n    def val(word):\n        return int(''.join(mp[ch] for ch in word))\n    if val('CROSS') + val('ROADS') == val('DANGER'):\n        print('Mapping', mp)\n        print(val('CROSS'), '+', val('ROADS'), '=', val('DANGER'))\n        break"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "questions": [
+      {
+        "qno": 1,
+        "question": "Build a bot which provides all the information related to you in college",
+        "answer": "# Explanation: Same simple college bot, returns canned information.\n\ninfo = {'name':'ABC College','dept':'Computer Science','email':'cs@abc.edu','phone':'1234567890'}\nprint('Ask: name/dept/email/phone; type exit to quit')\nwhile True:\n    q = input('> ').lower()\n    if q in ('exit','quit'): break\n    if 'name' in q: print(info['name'])\n    elif 'dept' in q: print(info['dept'])\n    elif 'email' in q: print(info['email'])\n    elif 'phone' in q: print(info['phone'])\n    else: print('I can provide name, dept, email, phone')"
+      },
+      {
+        "qno": 2,
+        "question": "Write a Python program to solve 8-puzzle problem.",
+        "answer": "# Explanation: Use A* from earlier 8-puzzle implementation. See slip 9 for a ready A* solver.\n\n# Reuse the A* solver from the 8-puzzle answer (copy-paste in same file for execution).\n\nimport heapq\n\n\ndef manhattan(state):\n    goal_pos = {1:(0,0),2:(0,1),3:(0,2),4:(1,0),5:(1,1),6:(1,2),7:(2,0),8:(2,1),0:(2,2)}\n    s = str(state)\n    h = 0\n    for i,ch in enumerate(s):\n        val = int(ch)\n        if val==0: continue\n        r,c = divmod(i,3)\n        gr,gc = goal_pos[val]\n        h += abs(r-gr)+abs(c-gc)\n    return h\n\n\ndef neighbors(state):\n    s = list(state)\n    i = s.index(0)\n    r,c = divmod(i,3)\n    moves = []\n    for dr,dc in [(-1,0),(1,0),(0,-1),(0,1)]:\n        nr,nc = r+dr, c+dc\n        if 0<=nr<3 and 0<=nc<3:\n            j = nr*3+nc\n            s2 = s[:]\n            s2[i],s2[j] = s2[j],s2[i]\n            moves.append(tuple(s2))\n    return moves\n\n\ndef astar(start):\n    start = tuple(start)\n    goal = tuple(range(1,9)) + (0,)\n    openq = [(manhattan(start), 0, start, None)]\n    came = {}\n    gscore = {start:0}\n    while openq:\n        f,g,node,parent = heapq.heappop(openq)\n        if node in came: continue\n        came[node] = parent\n        if node == goal:\n            path = []\n            while node:\n                path.append(node)\n                node = came[node]\n            return path[::-1]\n        for nb in neighbors(list(node)):\n            tentative = g+1\n            if tentative < gscore.get(nb, 1e9):\n                gscore[nb] = tentative\n                heapq.heappush(openq, (tentative + manhattan(nb), tentative, nb, node))\n    return None\n\nif __name__ == '__main__':\n    start = [1,2,3,4,5,6,7,0,8]\n    path = astar(start)\n    if path:\n        for p in path:\n            for i in range(3): print(p[3*i:3*i+3])\n            print()\n    else:\n        print('No solution')"
+      }
+    ]
+  }
+]
+}
+</script>
+
+<!-- =======================
+     ROUTER LOGIC
+     ======================= -->
+<script>
+(function() {
+  const path = window.location.pathname;   // /aos/1/1
+  const parts = path.split("/").filter(Boolean);
+
+  if (parts.length !== 3) {
+    document.getElementById("output").innerHTML =
+      "Invalid URL. Use: /{category}/{slipId}/{qno}";
+    return;
+  }
+
+  const category = parts[0];  // aos, ai, cloud, etc.
+  const slipId = parseInt(parts[1]);
+  const qno = parseInt(parts[2]);
+
+  // Category check
+  if (!data[category]) {
+    document.getElementById("output").innerHTML =
+      `Category "<b>${category}</b>" not found.`;
+    return;
+  }
+
+  // Slip check
+  const slip = data[category].find(s => s.id === slipId);
+  if (!slip) {
+    document.getElementById("output").innerHTML = "Slip not found.";
+    return;
+  }
+
+  // Question check
+  const questionObj = slip.questions.find(q => q.qno === qno);
+  if (!questionObj) {
+    document.getElementById("output").innerHTML = "Question not found.";
+    return;
+  }
+
+  // Output
+  document.getElementById("output").innerHTML = `
+    <h3>Category: ${category}</h3>
+    <h4>Slip ${slipId} — Question ${qno}</h4>
+
+    <p><strong>Question:</strong></p>
+    <p>${questionObj.question}</p>
+
+    <p><strong>Answer:</strong></p>
+    <pre>${questionObj.answer}</pre>
+  `;
+})();
+</script>
+
+</body>
+</html>
