@@ -783,16 +783,16 @@ let data = {
   const q = params.get("q");   // example: "aos/1/1"
 
   if (!q) {
-    document.getElementById("output").innerHTML =
-      'Invalid URL.<br>Use: <b>?q=category/slipId/questionNo</b><br><br>Example: <b>?q=aos/1/1</b>';
+    document.body.textContent =
+      "Invalid URL. Use: ?q=category/slip/question\nExample: ?q=aos/1/1";
     return;
   }
 
   const parts = q.split("/");
 
   if (parts.length !== 3) {
-    document.getElementById("output").innerHTML =
-      'Invalid <b>q</b> format. Use: <b>?q=category/slipId/qno</b>';
+    document.body.textContent =
+      "Invalid format. Use: ?q=category/slip/question";
     return;
   }
 
@@ -802,42 +802,33 @@ let data = {
 
   // Category check
   if (!data[category]) {
-    document.getElementById("output").innerHTML =
-      `Category "<b>${category}</b>" not found.`;
+    document.body.textContent = "Category not found.";
     return;
   }
 
   // Slip check
   const slip = data[category].find(s => s.id === slipId);
   if (!slip) {
-    document.getElementById("output").innerHTML = "Slip not found.";
+    document.body.textContent = "Slip not found.";
     return;
   }
 
   // Question check
   const questionObj = slip.questions.find(x => x.qno === qno);
   if (!questionObj) {
-    document.getElementById("output").innerHTML = "Question not found.";
+    document.body.textContent = "Question not found.";
     return;
   }
 
-  // Write layout first (WITHOUT answer text)
-  document.getElementById("output").innerHTML = `
-    <h3>Category: ${category.toUpperCase()}</h3>
-    <h4>Slip ${slipId} — Question ${qno}</h4>
-
-    <p><strong>Question:</strong></p>
-    <p>${questionObj.question}</p>
-
-    <p><strong>Answer:</strong></p>
-    <pre id="answer-block"></pre>
-  `;
-
-  // Insert answer as plain text (SAFE, prevents HTML parsing)
-  document.getElementById("answer-block").textContent = questionObj.answer;
+  // ⭐ ALWAYS output ONLY the answer (pure text)
+  document.body.innerHTML = "";            // remove ALL previous HTML
+  const pre = document.createElement("pre");
+  pre.textContent = questionObj.answer;    // SAFE raw text
+  document.body.appendChild(pre);
 
 })();
 </script>
+
 
 
 
