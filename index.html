@@ -796,7 +796,7 @@ let data = {
     return;
   }
 
-  const category = parts[0];      // aos, ai, cloud, etc.
+  const category = parts[0];
   const slipId = parseInt(parts[1]);
   const qno = parseInt(parts[2]);
 
@@ -821,7 +821,7 @@ let data = {
     return;
   }
 
-  // Output to page
+  // Write layout first (WITHOUT answer text)
   document.getElementById("output").innerHTML = `
     <h3>Category: ${category.toUpperCase()}</h3>
     <h4>Slip ${slipId} — Question ${qno}</h4>
@@ -830,8 +830,11 @@ let data = {
     <p>${questionObj.question}</p>
 
     <p><strong>Answer:</strong></p>
-    <pre>${questionObj.answer}</pre>
+    <pre id="answer-block"></pre>
   `;
+
+  // Insert answer as plain text (SAFE, prevents HTML parsing)
+  document.getElementById("answer-block").textContent = questionObj.answer;
 
 })();
 </script>
